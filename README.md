@@ -127,6 +127,30 @@ See [CONTRIBUTING](./CONTRIBUTING.md)
 
 Explore Plane's [product documentation](https://docs.plane.so/) and [developer documentation](https://developers.plane.so/) to learn about features, setup, and usage.
 
+## 🧪 Local Dev (Docker)
+
+1. Create env files:
+
+```sh
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+```
+
+2. Start the stack:
+
+```sh
+docker compose up -d
+```
+
+3. Run the migrator (first boot):
+
+```sh
+docker compose run --rm migrator
+```
+
+4. Open the web app:
+- http://localhost:3000
+
 ## ❤️ Community
 
 Join the Plane community on [GitHub Discussions](https://github.com/orgs/makeplane/discussions) and our [Discord server](https://discord.com/invite/A92xrEGCge). We follow a [Code of conduct](https://github.com/makeplane/plane/blob/master/CODE_OF_CONDUCT.md) in all our community channels.
