@@ -32,6 +32,20 @@ APP_RELEASE=internal-preview docker compose -f deployments/internal/docker-compo
 
 This variant removes local Postgres and MinIO. It keeps Redis and RabbitMQ local by default. If you use managed Redis, update `REDIS_URL` and remove the `plane-redis` service.
 
+## DigitalOcean Managed Postgres setup
+Before using the external compose file, do the following:
+1. Add the Droplet IP (or a tag) to the DB cluster Trusted Sources so it can connect.
+2. Create a dedicated database and user for Plane in the cluster.
+3. Copy the connection details into `deployments/internal/plane.env`:
+   - `DATABASE_URL` with `sslmode=require`
+   - `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+
+Then run the migrator once:
+
+```sh
+APP_RELEASE=internal-preview docker compose -f deployments/internal/docker-compose.ghcr.external.yml run --rm migrator
+```
+
 ## Notes
 - If you use external Postgres, Redis/Valkey, or S3 storage, remove the local services and update `plane.env`.
 - For first install, run the migrator once and then stop it:
