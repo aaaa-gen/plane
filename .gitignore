@@ -1,0 +1,33 @@
+# Environment files with secrets
+plane.env
+*.env.local
+.env
+
+# Keep production template
+!plane.env.production
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker volumes data (if any)
+data/
+
+# Backups
+backups/
+*.sql
+*.sql.gz
+
+# Temporary files
+*.tmp
+*.temp
