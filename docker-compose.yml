@@ -3,22 +3,22 @@
 
 x-app-env: &app-env
   WEB_URL: https://${APP_DOMAIN}
-  DEBUG: ${DEBUG:-0}
+  DEBUG: ${DEBUG}
   CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN}
-  GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+  GUNICORN_WORKERS: ${GUNICORN_WORKERS}
   USE_MINIO: 1
-  DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:5432/${POSTGRES_DB:-plane}
+  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@plane-db:5432/${POSTGRES_DB}
   SECRET_KEY: ${SECRET_KEY}
-  AMQP_URL: amqp://${RABBITMQ_USER:-plane}:${RABBITMQ_PASSWORD:-plane}@plane-mq:5672/${RABBITMQ_VHOST:-plane}
-  API_KEY_RATE_LIMIT: ${API_KEY_RATE_LIMIT:-60/minute}
+  AMQP_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@plane-mq:5672/${RABBITMQ_VHOST}
+  API_KEY_RATE_LIMIT: ${API_KEY_RATE_LIMIT}
   MINIO_ENDPOINT_SSL: 0
   LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY}
   # Database
   PGHOST: plane-db
-  PGDATABASE: ${POSTGRES_DB:-plane}
-  POSTGRES_USER: ${POSTGRES_USER:-plane}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plane}
-  POSTGRES_DB: ${POSTGRES_DB:-plane}
+  PGDATABASE: ${POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_DB: ${POSTGRES_DB}
   POSTGRES_PORT: 5432
   # Redis
   REDIS_HOST: plane-redis
@@ -26,20 +26,20 @@ x-app-env: &app-env
   REDIS_URL: redis://plane-redis:6379/
   # S3/MinIO
   AWS_REGION: ""
-  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-access-key}
-  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-secret-key}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   AWS_S3_ENDPOINT_URL: http://plane-minio:9000
   AWS_S3_BUCKET_NAME: uploads
   # Proxy
   APP_DOMAIN: ${APP_DOMAIN}
-  FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT:-26214400}
+  FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT}
 
 services:
   # ============================================
   # FRONTEND SERVICES
   # ============================================
   web:
-    image: artifacts.plane.so/makeplane/plane-frontend:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-frontend:${APP_RELEASE}
     container_name: plane-web
     restart: unless-stopped
     environment:
@@ -64,7 +64,7 @@ services:
       - "traefik.http.services.plane-web.loadbalancer.server.port=3000"
 
   space:
-    image: artifacts.plane.so/makeplane/plane-space:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-space:${APP_RELEASE}
     container_name: plane-space
     restart: unless-stopped
     depends_on:
@@ -83,7 +83,7 @@ services:
       - "traefik.http.services.plane-space.loadbalancer.server.port=3000"
 
   admin:
-    image: artifacts.plane.so/makeplane/plane-admin:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-admin:${APP_RELEASE}
     container_name: plane-admin
     restart: unless-stopped
     depends_on:
@@ -102,7 +102,7 @@ services:
       - "traefik.http.services.plane-admin.loadbalancer.server.port=3000"
 
   live:
-    image: artifacts.plane.so/makeplane/plane-live:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-live:${APP_RELEASE}
     container_name: plane-live
     restart: unless-stopped
     environment:
@@ -130,7 +130,7 @@ services:
   # BACKEND SERVICES
   # ============================================
   api:
-    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE}
     container_name: plane-api
     restart: unless-stopped
     command: ./bin/docker-entrypoint-api.sh
@@ -155,7 +155,7 @@ services:
       - "traefik.http.services.plane-api.loadbalancer.server.port=8000"
 
   worker:
-    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE}
     container_name: plane-worker
     restart: unless-stopped
     command: ./bin/docker-entrypoint-worker.sh
@@ -172,7 +172,7 @@ services:
       - plane-internal
 
   beat-worker:
-    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE}
     container_name: plane-beat-worker
     restart: unless-stopped
     command: ./bin/docker-entrypoint-beat.sh
@@ -189,7 +189,7 @@ services:
       - plane-internal
 
   migrator:
-    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
+    image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE}
     container_name: plane-migrator
     restart: "no"
     command: ./bin/docker-entrypoint-migrator.sh
@@ -212,9 +212,9 @@ services:
     restart: unless-stopped
     command: postgres -c 'max_connections=1000'
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-plane}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plane}
-      POSTGRES_DB: ${POSTGRES_DB:-plane}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       PGDATA: /var/lib/postgresql/data
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -235,9 +235,9 @@ services:
     container_name: plane-mq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-plane}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-plane}
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-plane}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -249,8 +249,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-access-key}
-      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-secret-key}
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
     volumes:
       - minio_data:/data
     networks:
@@ -265,7 +265,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      mc alias set myminio http://plane-minio:9000 ${AWS_ACCESS_KEY_ID:-access-key} ${AWS_SECRET_ACCESS_KEY:-secret-key};
+      mc alias set myminio http://plane-minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
       mc mb myminio/uploads --ignore-existing;
       mc anonymous set download myminio/uploads;
       exit 0;
