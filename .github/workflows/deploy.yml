@@ -1,0 +1,48 @@
+name: Deploy Plane
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat > plane.env << EOF
+          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+          APP_RELEASE=stable
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          LIVE_SERVER_SECRET_KEY=${{ secrets.LIVE_SERVER_SECRET_KEY }}
+          POSTGRES_USER=plane
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=plane
+          RABBITMQ_USER=plane
+          RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
+          RABBITMQ_VHOST=plane
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DEBUG=0
+          GUNICORN_WORKERS=2
+          EOF
+
+      - name: Create traefik network
+        run: docker network create traefik 2>/dev/null || true
+
+      - name: Pull images
+        run: docker compose pull
+
+      - name: Deploy
+        run: docker compose up -d
+
+      - name: Health check
+        run: |
+          echo "Waiting for services..."
+          sleep 30
+          docker compose ps

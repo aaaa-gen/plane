@@ -1,165 +1,78 @@
-# Plane.so Service
+# Plane.so Docker Deployment
 
-Plane.so es una herramienta de gestión de proyectos de código abierto. Este servicio está configurado para ejecutarse localmente usando Docker Compose e integrado con Traefik como reverse proxy.
+Gestión de proyectos open source con Traefik reverse proxy.
 
-## Configuración
+## Requisitos
 
-### Variables de Entorno
+- Docker y Docker Compose
+- Traefik gateway corriendo (red `traefik`)
+- Certificados SSL configurados con Cloudflare
 
-El archivo `plane.env` contiene todas las variables de configuración. Las principales son:
-
-- `APP_DOMAIN`: Dominio donde se accederá a Plane (por defecto: `plane.aaaagen.lan`)
-- `APP_RELEASE`: Versión de Plane a usar (por defecto: `v1.1.0`)
-- `WEB_URL`: URL completa de acceso (por defecto: `http://${APP_DOMAIN}`)
-- `SECRET_KEY`: Clave secreta para la aplicación (cambiar en producción)
-- `POSTGRES_PASSWORD`: Contraseña de la base de datos (cambiar en producción)
-- `RABBITMQ_PASSWORD`: Contraseña de RabbitMQ (cambiar en producción)
-
-### Servicios
-
-Plane incluye los siguientes servicios:
-
-- **web**: Frontend principal
-- **space**: Espacios de trabajo
-- **admin**: Panel de administración
-- **api**: API backend
-- **worker**: Procesador de tareas en segundo plano
-- **beat-worker**: Programador de tareas
-- **live**: Servidor WebSocket para actualizaciones en tiempo real
-- **migrator**: Ejecuta migraciones de base de datos
-- **plane-db**: Base de datos PostgreSQL
-- **plane-redis**: Cache Redis/Valkey
-- **plane-mq**: Message queue RabbitMQ
-- **plane-minio**: Almacenamiento de objetos S3-compatible
-
-## Uso
-
-### Desde el directorio de Plane
+## Instalación
 
 ```bash
-# Cargar variables de entorno
-cd /home/agen/services/plane
-set -o allexport; source plane.env; set +o allexport
+# 1. Crear red traefik si no existe
+docker network create traefik
 
-# Iniciar todos los servicios
+# 2. Copiar y configurar variables
+cp plane.env.example plane.env
+nano plane.env  # Editar valores
+
+# 3. Iniciar
 docker compose up -d
 
-# Ver logs
+# 4. Ver logs
 docker compose logs -f
+```
 
-# Detener servicios
+## Configuración Requerida
+
+Edita `plane.env`:
+
+```bash
+APP_DOMAIN=plane.tudominio.com
+SECRET_KEY=<openssl rand -hex 32>
+LIVE_SERVER_SECRET_KEY=<openssl rand -hex 32>
+POSTGRES_PASSWORD=contraseña-segura
+RABBITMQ_PASSWORD=contraseña-segura
+AWS_ACCESS_KEY_ID=minio-access-key
+AWS_SECRET_ACCESS_KEY=minio-secret-key
+```
+
+## Servicios
+
+| Servicio | Descripción |
+|----------|-------------|
+| web | Frontend principal |
+| api | Backend API |
+| space | Espacios públicos |
+| admin | Panel de administración (god-mode) |
+| live | WebSocket real-time |
+| worker | Background jobs |
+| plane-db | PostgreSQL |
+| plane-redis | Redis cache |
+| plane-mq | RabbitMQ |
+| plane-minio | S3 storage |
+
+## URLs
+
+- **App:** `https://APP_DOMAIN/`
+- **Admin:** `https://APP_DOMAIN/god-mode`
+- **API:** `https://APP_DOMAIN/api`
+
+## Comandos
+
+```bash
+# Detener
 docker compose down
+
+# Reiniciar
+docker compose restart
+
+# Ver estado
+docker compose ps
+
+# Backup BD
+docker exec plane-db pg_dump -U plane plane > backup.sql
 ```
-
-### Desde el directorio maestro
-
-```bash
-# Cargar variables de entorno primero
-cd /home/agen/services/plane
-set -o allexport; source plane.env; set +o allexport
-cd /home/agen/services
-
-# Iniciar Plane junto con Traefik
-docker compose --profile traefik -f docker-compose.yml -f plane/docker-compose.yml up -d
-```
-
-## Integración con Traefik
-
-Plane está configurado para usar Traefik como reverse proxy. El proxy interno de Plane está deshabilitado. Las rutas están configuradas mediante labels de Traefik:
-
-- Frontend principal: `http://${APP_DOMAIN}/`
-- API: `http://${APP_DOMAIN}/api`
-- Admin: `http://${APP_DOMAIN}/admin`
-- Space: `http://${APP_DOMAIN}/space`
-- WebSocket: `http://${APP_DOMAIN}/ws`
-
-## Redes
-
-- `internal_net`: Comunicación entre servicios de Plane y con Traefik
-- `database_net`: Base de datos PostgreSQL (red interna)
-
-## Volúmenes
-
-- `pgdata`: Datos de PostgreSQL
-- `redisdata`: Datos de Redis
-- `uploads`: Archivos subidos (MinIO)
-- `rabbitmq_data`: Datos de RabbitMQ
-- `logs_*`: Logs de cada servicio
-
-## Primera Ejecución
-
-1. Asegúrate de que Traefik esté ejecutándose:
-   ```bash
-   docker compose --profile traefik up -d
-   ```
-
-2. Carga las variables de entorno:
-   ```bash
-   cd /home/agen/services/plane
-   set -o allexport; source plane.env; set +o allexport
-   ```
-
-## Despliegue en Producción (DigitalOcean)
-
-Para despliegue automatizado usando GitHub Actions con self-hosted runner, ver:
-
-📖 **[DEPLOY.md](DEPLOY.md)** - Guía completa de despliegue en DigitalOcean
-
-### Resumen rápido:
-
-```bash
-# 1. En el servidor de DigitalOcean, configurar el runner
-export GITHUB_TOKEN="ghp_xxx"
-export GITHUB_OWNER="usuario"
-export GITHUB_REPO="services"
-sudo -E ./scripts/setup-runner.sh
-
-# 2. Configurar secrets en GitHub (Settings > Secrets)
-# - PLANE_SECRET_KEY
-# - POSTGRES_PASSWORD
-# - PLANE_DOMAIN
-
-# 3. Ejecutar el workflow desde GitHub Actions
-# O manualmente en el servidor:
-./scripts/deploy.sh deploy production
-```
-
-### Scripts disponibles:
-
-| Script | Descripción |
-|--------|-------------|
-| `scripts/deploy.sh` | Despliegue, restart, backup, restore |
-| `scripts/setup-runner.sh` | Configuración del runner de GitHub |
-
-3. Inicia Plane:
-   ```bash
-   docker compose up -d
-   ```
-
-4. El migrator se ejecutará automáticamente en el primer inicio para configurar la base de datos.
-
-5. Accede a Plane en:
-   - Por Traefik (puerto 9000): `http://<IP_SERVIDOR>:9000`
-     - 172.16.0.98:9000
-     - 192.168.12.236:9000
-     - 172.16.0.77:9000
-   - Nota: Plane está expuesto a través de Traefik en el puerto 9000, no hay puertos directos
-
-## Actualización
-
-Para actualizar Plane a una nueva versión:
-
-1. Edita `plane.env` y cambia `APP_RELEASE` a la nueva versión
-2. Detén los servicios: `docker compose down`
-3. Recarga las variables: `set -o allexport; source plane.env; set +o allexport`
-4. Inicia los servicios: `docker compose up -d --pull always`
-
-## Notas
-
-- El proxy interno de Plane está deshabilitado ya que usamos Traefik
-- Plane está expuesto a través de Traefik en el puerto 9000 (entrypoint "plane")
-- Traefik maneja el enrutamiento de todos los servicios de Plane (web, api, space, admin, live)
-- Asegúrate de cambiar las contraseñas por defecto en producción
-- Para producción, considera usar bases de datos externas (PostgreSQL, Redis, RabbitMQ)
-- Si accedes desde fuera de la red local, asegúrate de que el firewall permita el puerto 9000
 

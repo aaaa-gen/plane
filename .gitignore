@@ -1,16 +1,11 @@
-# Environment files with secrets
+# Environment files (contain secrets)
 plane.env
-*.env.local
 .env
-
-# Keep production template
-!plane.env.production
 
 # Logs
 *.log
-logs/
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
@@ -18,16 +13,3 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-*.swo
-
-# Docker volumes data (if any)
-data/
-
-# Backups
-backups/
-*.sql
-*.sql.gz
-
-# Temporary files
-*.tmp
-*.temp

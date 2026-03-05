@@ -1,97 +1,67 @@
-x-db-env: &db-env
-  PGHOST: ${PGHOST:-plane-db}
-  PGDATABASE: ${PGDATABASE:-plane}
+# Plane.so Docker Compose - Compatible with Traefik Gateway
+# Requires: docker network create traefik (if not exists)
+
+x-app-env: &app-env
+  WEB_URL: https://${APP_DOMAIN}
+  DEBUG: ${DEBUG:-0}
+  CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN}
+  GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+  USE_MINIO: 1
+  DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:5432/${POSTGRES_DB:-plane}
+  SECRET_KEY: ${SECRET_KEY}
+  AMQP_URL: amqp://${RABBITMQ_USER:-plane}:${RABBITMQ_PASSWORD:-plane}@plane-mq:5672/${RABBITMQ_VHOST:-plane}
+  API_KEY_RATE_LIMIT: ${API_KEY_RATE_LIMIT:-60/minute}
+  MINIO_ENDPOINT_SSL: 0
+  LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY}
+  # Database
+  PGHOST: plane-db
+  PGDATABASE: ${POSTGRES_DB:-plane}
   POSTGRES_USER: ${POSTGRES_USER:-plane}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plane}
   POSTGRES_DB: ${POSTGRES_DB:-plane}
-  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-  PGDATA: ${PGDATA:-/var/lib/postgresql/data}
-
-x-redis-env: &redis-env
-  REDIS_HOST: ${REDIS_HOST:-plane-redis}
-  REDIS_PORT: ${REDIS_PORT:-6379}
-  REDIS_URL: ${REDIS_URL:-redis://plane-redis:6379/}
-
-x-minio-env: &minio-env
-  MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-access-key}
-  MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-secret-key}
-
-x-aws-s3-env: &aws-s3-env
-  AWS_REGION: ${AWS_REGION:-}
+  POSTGRES_PORT: 5432
+  # Redis
+  REDIS_HOST: plane-redis
+  REDIS_PORT: 6379
+  REDIS_URL: redis://plane-redis:6379/
+  # S3/MinIO
+  AWS_REGION: ""
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-access-key}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-secret-key}
-  AWS_S3_ENDPOINT_URL: ${AWS_S3_ENDPOINT_URL:-http://plane-minio:9000}
-  AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-uploads}
-
-x-proxy-env: &proxy-env
-  APP_DOMAIN: ${APP_DOMAIN:-localhost}
-  FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT:-5242880}
-  CERT_EMAIL: ${CERT_EMAIL:-}
-  CERT_ACME_CA: ${CERT_ACME_CA:-}
-  CERT_ACME_DNS: ${CERT_ACME_DNS:-}
-  LISTEN_HTTP_PORT: ${LISTEN_HTTP_PORT:-80}
-  LISTEN_HTTPS_PORT: ${LISTEN_HTTPS_PORT:-443}
-  BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-uploads}
-  SITE_ADDRESS: ${SITE_ADDRESS:-:80}
-
-x-mq-env: &mq-env
-  RABBITMQ_HOST: ${RABBITMQ_HOST:-plane-mq}
-  RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-  RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-plane}
-  RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-plane}
-  RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-plane}
-  RABBITMQ_VHOST: ${RABBITMQ_VHOST:-plane}
-
-x-live-env: &live-env
-  API_BASE_URL: ${API_BASE_URL:-http://api:8000}
-  LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY:-2FiJk1U2aiVPEQtzLehYGlTSnTnrs7LW}
-
-x-app-env: &app-env
-  WEB_URL: ${WEB_URL:-http://localhost}
-  DEBUG: ${DEBUG:-0}
-  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
-  GUNICORN_WORKERS: 1
-  USE_MINIO: ${USE_MINIO:-1}
-  DATABASE_URL: ${DATABASE_URL:-postgresql://plane:plane@plane-db/plane}
-  SECRET_KEY: ${SECRET_KEY:-60gp0byfz2dvffa45cxl20p1scy9xbpf6d8c5y0geejgkyp1b5}
-  AMQP_URL: ${AMQP_URL:-amqp://plane:plane@plane-mq:5672/plane}
-  API_KEY_RATE_LIMIT: ${API_KEY_RATE_LIMIT:-60/minute}
-  MINIO_ENDPOINT_SSL: ${MINIO_ENDPOINT_SSL:-0}
-  LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY:-2FiJk1U2aiVPEQtzLehYGlTSnTnrs7LW}
+  AWS_S3_ENDPOINT_URL: http://plane-minio:9000
+  AWS_S3_BUCKET_NAME: uploads
+  # Proxy
+  APP_DOMAIN: ${APP_DOMAIN}
+  FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT:-26214400}
 
 services:
+  # ============================================
+  # FRONTEND SERVICES
+  # ============================================
   web:
     image: artifacts.plane.so/makeplane/plane-frontend:${APP_RELEASE:-stable}
     container_name: plane-web
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${WEB_URL:-http://172.16.0.98:9000}/api
-      NEXT_PUBLIC_WEB_BASE_URL: ${WEB_URL:-http://172.16.0.98:9000}
-      NEXT_PUBLIC_ADMIN_BASE_URL: ${WEB_URL:-http://172.16.0.98:9000}/admin
-      NEXT_PUBLIC_SPACE_BASE_URL: ${WEB_URL:-http://172.16.0.98:9000}/space
-      NEXT_PUBLIC_LIVE_BASE_URL: ${WEB_URL:-http://172.16.0.98:9000}/ws
+      NEXT_PUBLIC_API_BASE_URL: https://${APP_DOMAIN}/api
+      NEXT_PUBLIC_WEB_BASE_URL: https://${APP_DOMAIN}
+      NEXT_PUBLIC_ADMIN_BASE_URL: https://${APP_DOMAIN}/god-mode
+      NEXT_PUBLIC_SPACE_BASE_URL: https://${APP_DOMAIN}/spaces
+      NEXT_PUBLIC_LIVE_BASE_URL: https://${APP_DOMAIN}/live
     depends_on:
       - api
-      - worker
     networks:
-      - internal_net
+      - traefik
+      - plane-internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.plane-web.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.plane-web.entrypoints=plane"
+      - "traefik.docker.network=traefik"
+      # Main router - catch all for frontend
+      - "traefik.http.routers.plane-web.rule=Host(`${APP_DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/god-mode`) && !PathPrefix(`/spaces`) && !PathPrefix(`/live`)"
+      - "traefik.http.routers.plane-web.entrypoints=websecure"
+      - "traefik.http.routers.plane-web.tls=true"
+      - "traefik.http.routers.plane-web.tls.certresolver=cloudflare"
       - "traefik.http.services.plane-web.loadbalancer.server.port=3000"
-      - "traefik.http.routers.plane-web.priority=1"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Proto=http"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Host=172.16.0.98:9000"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Port=9000"
-      - "traefik.http.middlewares.plane-godmode-redirect.redirectregex.regex=^http://172\\.16\\.0\\.98:9000/god-mode$$"
-      - "traefik.http.middlewares.plane-godmode-redirect.redirectregex.replacement=http://172.16.0.98:9000/god-mode/"
-      - "traefik.http.middlewares.plane-godmode-redirect.redirectregex.permanent=true"
-      - "traefik.http.routers.plane-web-godmode.rule=Path(`/god-mode`)"
-      - "traefik.http.routers.plane-web-godmode.entrypoints=plane"
-      - "traefik.http.routers.plane-web-godmode.middlewares=plane-godmode-redirect"
-      - "traefik.http.routers.plane-web-godmode.priority=100"
-      - "traefik.http.routers.plane-web.middlewares=plane-headers"
 
   space:
     image: artifacts.plane.so/makeplane/plane-space:${APP_RELEASE:-stable}
@@ -99,16 +69,18 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-      - worker
       - web
     networks:
-      - internal_net
+      - traefik
+      - plane-internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.plane-space.rule=PathPrefix(`/space`)"
-      - "traefik.http.routers.plane-space.entrypoints=plane"
-      - "traefik.http.services.plane-space.loadbalancer.server.port=80"
-      - "traefik.http.routers.plane-space.priority=10"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.plane-space.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/spaces`)"
+      - "traefik.http.routers.plane-space.entrypoints=websecure"
+      - "traefik.http.routers.plane-space.tls=true"
+      - "traefik.http.routers.plane-space.tls.certresolver=cloudflare"
+      - "traefik.http.services.plane-space.loadbalancer.server.port=3000"
 
   admin:
     image: artifacts.plane.so/makeplane/plane-admin:${APP_RELEASE:-stable}
@@ -118,32 +90,45 @@ services:
       - api
       - web
     networks:
-      - internal_net
+      - traefik
+      - plane-internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.plane-admin.rule=PathPrefix(`/admin`)"
-      - "traefik.http.routers.plane-admin.entrypoints=plane"
-      - "traefik.http.services.plane-admin.loadbalancer.server.port=80"
-      - "traefik.http.routers.plane-admin.priority=10"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.plane-admin.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/god-mode`)"
+      - "traefik.http.routers.plane-admin.entrypoints=websecure"
+      - "traefik.http.routers.plane-admin.tls=true"
+      - "traefik.http.routers.plane-admin.tls.certresolver=cloudflare"
+      - "traefik.http.services.plane-admin.loadbalancer.server.port=3000"
 
   live:
     image: artifacts.plane.so/makeplane/plane-live:${APP_RELEASE:-stable}
     container_name: plane-live
     restart: unless-stopped
     environment:
-      <<: [*live-env, *redis-env]
+      API_BASE_URL: http://api:8000
+      LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY}
+      REDIS_HOST: plane-redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://plane-redis:6379/
     depends_on:
       - api
-      - web
+      - plane-redis
     networks:
-      - internal_net
+      - traefik
+      - plane-internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.plane-live.rule=PathPrefix(`/ws`)"
-      - "traefik.http.routers.plane-live.entrypoints=plane"
-      - "traefik.http.services.plane-live.loadbalancer.server.port=80"
-      - "traefik.http.routers.plane-live.priority=10"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.plane-live.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/live`)"
+      - "traefik.http.routers.plane-live.entrypoints=websecure"
+      - "traefik.http.routers.plane-live.tls=true"
+      - "traefik.http.routers.plane-live.tls.certresolver=cloudflare"
+      - "traefik.http.services.plane-live.loadbalancer.server.port=3000"
 
+  # ============================================
+  # BACKEND SERVICES
+  # ============================================
   api:
     image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
     container_name: plane-api
@@ -152,19 +137,22 @@ services:
     volumes:
       - logs_api:/code/plane/logs
     environment:
-      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      <<: *app-env
     depends_on:
       - plane-db
       - plane-redis
       - plane-mq
     networks:
-      - internal_net
+      - traefik
+      - plane-internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.plane-api.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.plane-api.entrypoints=plane"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.plane-api.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.plane-api.entrypoints=websecure"
+      - "traefik.http.routers.plane-api.tls=true"
+      - "traefik.http.routers.plane-api.tls.certresolver=cloudflare"
       - "traefik.http.services.plane-api.loadbalancer.server.port=8000"
-      - "traefik.http.routers.plane-api.priority=10"
 
   worker:
     image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
@@ -174,14 +162,14 @@ services:
     volumes:
       - logs_worker:/code/plane/logs
     environment:
-      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      <<: *app-env
     depends_on:
       - api
       - plane-db
       - plane-redis
       - plane-mq
     networks:
-      - internal_net
+      - plane-internal
 
   beat-worker:
     image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
@@ -189,16 +177,16 @@ services:
     restart: unless-stopped
     command: ./bin/docker-entrypoint-beat.sh
     volumes:
-      - logs_beat-worker:/code/plane/logs
+      - logs_beat:/code/plane/logs
     environment:
-      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      <<: *app-env
     depends_on:
       - api
       - plane-db
       - plane-redis
       - plane-mq
     networks:
-      - internal_net
+      - plane-internal
 
   migrator:
     image: artifacts.plane.so/makeplane/plane-backend:${APP_RELEASE:-stable}
@@ -208,86 +196,102 @@ services:
     volumes:
       - logs_migrator:/code/plane/logs
     environment:
-      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      <<: *app-env
     depends_on:
       - plane-db
       - plane-redis
     networks:
-      - internal_net
+      - plane-internal
 
+  # ============================================
+  # DATA SERVICES
+  # ============================================
   plane-db:
-    image: postgres:15.7-alpine
+    image: postgres:15-alpine
     container_name: plane-db
     restart: unless-stopped
     command: postgres -c 'max_connections=1000'
     environment:
-      <<: *db-env
+      POSTGRES_USER: ${POSTGRES_USER:-plane}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plane}
+      POSTGRES_DB: ${POSTGRES_DB:-plane}
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - database_net
-      - internal_net
+      - plane-internal
 
   plane-redis:
-    image: valkey/valkey:7.2.11-alpine
+    image: valkey/valkey:7.2-alpine
     container_name: plane-redis
     restart: unless-stopped
     volumes:
       - redisdata:/data
     networks:
-      - internal_net
+      - plane-internal
 
   plane-mq:
-    image: rabbitmq:3.13.6-management-alpine
+    image: rabbitmq:3.13-management-alpine
     container_name: plane-mq
     restart: unless-stopped
     environment:
-      <<: *mq-env
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-plane}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-plane}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-plane}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
-      - internal_net
+      - plane-internal
 
   plane-minio:
     image: minio/minio:latest
     container_name: plane-minio
     restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-access-key}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-secret-key}
+    volumes:
+      - minio_data:/data
+    networks:
+      - plane-internal
+
+  # Create MinIO bucket on startup
+  minio-setup:
+    image: minio/mc:latest
+    container_name: plane-minio-setup
+    depends_on:
+      - plane-minio
     entrypoint: >
       /bin/sh -c "
-      mkdir -p /export/${AWS_S3_BUCKET_NAME:-uploads} &&
-      minio server /export --console-address ':9090' &
-      sleep 5 &&
-      (command -v wget >/dev/null 2>&1 && wget -q -O /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc || 
-       command -v curl >/dev/null 2>&1 && curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc || 
-       echo 'Warning: Could not download mc client') &&
-      chmod +x /tmp/mc 2>/dev/null || true &&
-      /tmp/mc alias set myminio http://localhost:9000 ${AWS_ACCESS_KEY_ID:-access-key} ${AWS_SECRET_ACCESS_KEY:-secret-key} 2>/dev/null || true &&
-      /tmp/mc mb myminio/${AWS_S3_BUCKET_NAME:-uploads} -p 2>/dev/null || true &&
-      tail -f /dev/null
+      sleep 5;
+      mc alias set myminio http://plane-minio:9000 ${AWS_ACCESS_KEY_ID:-access-key} ${AWS_SECRET_ACCESS_KEY:-secret-key};
+      mc mb myminio/uploads --ignore-existing;
+      mc anonymous set download myminio/uploads;
+      exit 0;
       "
-    environment:
-      <<: *minio-env
-      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-uploads}
-    volumes:
-      - uploads:/export
     networks:
-      - internal_net
+      - plane-internal
 
+# ============================================
+# NETWORKS
+# ============================================
 networks:
-  internal_net:
+  traefik:
     external: true
-    name: services_internal_net
-  database_net:
-    external: true
-    name: services_database_net
+  plane-internal:
+    driver: bridge
 
+# ============================================
+# VOLUMES
+# ============================================
 volumes:
   pgdata:
   redisdata:
-  uploads:
+  rabbitmq_data:
+  minio_data:
   logs_api:
   logs_worker:
-  logs_beat-worker:
+  logs_beat:
   logs_migrator:
-  rabbitmq_data:
 
