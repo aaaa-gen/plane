@@ -5,6 +5,26 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  # Variables públicas
+  APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+  APP_RELEASE: ${{ vars.APP_RELEASE }}
+  POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+  POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+  RABBITMQ_USER: ${{ vars.RABBITMQ_USER }}
+  RABBITMQ_VHOST: ${{ vars.RABBITMQ_VHOST }}
+  DEBUG: ${{ vars.DEBUG }}
+  GUNICORN_WORKERS: ${{ vars.GUNICORN_WORKERS }}
+  FILE_SIZE_LIMIT: ${{ vars.FILE_SIZE_LIMIT }}
+  API_KEY_RATE_LIMIT: ${{ vars.API_KEY_RATE_LIMIT }}
+  # Secrets
+  SECRET_KEY: ${{ secrets.SECRET_KEY }}
+  LIVE_SERVER_SECRET_KEY: ${{ secrets.LIVE_SERVER_SECRET_KEY }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
 jobs:
   deploy:
     runs-on: [self-hosted, Linux, prod]
@@ -12,38 +32,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Create .env file
-        run: |
-          cat > plane.env << EOF
-          # Domain & Version
-          APP_DOMAIN=${{ vars.APP_DOMAIN }}
-          APP_RELEASE=${{ vars.APP_RELEASE }}
-          
-          # Security (from secrets)
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          LIVE_SERVER_SECRET_KEY=${{ secrets.LIVE_SERVER_SECRET_KEY }}
-          
-          # Database
-          POSTGRES_USER=${{ vars.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=${{ vars.POSTGRES_DB }}
-          
-          # RabbitMQ
-          RABBITMQ_USER=${{ vars.RABBITMQ_USER }}
-          RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
-          RABBITMQ_VHOST=${{ vars.RABBITMQ_VHOST }}
-          
-          # MinIO (from secrets)
-          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          
-          # Performance
-          DEBUG=${{ vars.DEBUG }}
-          GUNICORN_WORKERS=${{ vars.GUNICORN_WORKERS }}
-          FILE_SIZE_LIMIT=${{ vars.FILE_SIZE_LIMIT }}
-          API_KEY_RATE_LIMIT=${{ vars.API_KEY_RATE_LIMIT }}
-          EOF
 
       - name: Create traefik network
         run: docker network create traefik 2>/dev/null || true
