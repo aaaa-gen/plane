@@ -45,8 +45,27 @@ jobs:
       - name: Deploy
         run: docker compose up -d
 
-      - name: Wait for services
-        run: sleep 45
+      - name: Wait for migrator to complete
+        run: |
+          echo "=== Waiting for database migrations ==="
+          for i in {1..30}; do
+            STATUS=$(docker inspect plane-migrator --format='{{.State.Status}}' 2>/dev/null || echo "running")
+            if [ "$STATUS" = "exited" ]; then
+              EXIT_CODE=$(docker inspect plane-migrator --format='{{.State.ExitCode}}')
+              if [ "$EXIT_CODE" = "0" ]; then
+                echo "Migrations completed successfully!"
+                break
+              else
+                echo "Migrations failed with exit code $EXIT_CODE"
+                docker logs plane-migrator --tail=100
+                exit 1
+              fi
+            fi
+            echo "Migrations running... ($i/30)"
+            sleep 10
+          done
+          echo "=== Migrator logs ==="
+          docker logs plane-migrator --tail=50
 
       - name: Health check
         run: |
@@ -54,14 +73,14 @@ jobs:
           docker compose ps
           echo ""
           echo "=== Checking API ==="
-          for i in {1..10}; do
+          for i in {1..15}; do
             if docker exec plane-api curl -sf http://localhost:8000/api/v1/ > /dev/null 2>&1; then
               echo "API is healthy!"
               exit 0
             fi
-            echo "Waiting for API... ($i/10)"
+            echo "Waiting for API... ($i/15)"
             sleep 10
           done
           echo "API health check timeout - showing logs"
-          docker compose logs --tail=50 api
+          docker compose logs --tail=100 api migrator
           exit 1
