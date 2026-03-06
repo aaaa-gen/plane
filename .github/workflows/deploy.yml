@@ -24,6 +24,18 @@ jobs:
       - name: Stop existing containers
         run: docker compose down --remove-orphans 2>/dev/null || true
 
+      - name: Debug env vars
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          APP_RELEASE: ${{ vars.APP_RELEASE }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+        run: |
+          echo "APP_DOMAIN=$APP_DOMAIN"
+          echo "APP_RELEASE=$APP_RELEASE"
+          echo "POSTGRES_USER=$POSTGRES_USER"
+          echo "---"
+          env | grep -E "APP_|POSTGRES_" || echo "No matching vars found"
+
       - name: Deploy
         env:
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
