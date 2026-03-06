@@ -5,26 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  # Variables públicas
-  APP_DOMAIN: ${{ vars.APP_DOMAIN }}
-  APP_RELEASE: ${{ vars.APP_RELEASE }}
-  POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-  POSTGRES_DB: ${{ vars.POSTGRES_DB }}
-  RABBITMQ_USER: ${{ vars.RABBITMQ_USER }}
-  RABBITMQ_VHOST: ${{ vars.RABBITMQ_VHOST }}
-  DEBUG: ${{ vars.DEBUG }}
-  GUNICORN_WORKERS: ${{ vars.GUNICORN_WORKERS }}
-  FILE_SIZE_LIMIT: ${{ vars.FILE_SIZE_LIMIT }}
-  API_KEY_RATE_LIMIT: ${{ vars.API_KEY_RATE_LIMIT }}
-  # Secrets
-  SECRET_KEY: ${{ secrets.SECRET_KEY }}
-  LIVE_SERVER_SECRET_KEY: ${{ secrets.LIVE_SERVER_SECRET_KEY }}
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-  RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
 jobs:
   deploy:
     runs-on: [self-hosted, Linux, prod]
@@ -37,12 +17,31 @@ jobs:
         run: docker network create traefik 2>/dev/null || true
 
       - name: Pull images
+        env:
+          APP_RELEASE: ${{ vars.APP_RELEASE }}
         run: docker compose pull
 
       - name: Stop existing containers
         run: docker compose down --remove-orphans 2>/dev/null || true
 
       - name: Deploy
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          APP_RELEASE: ${{ vars.APP_RELEASE }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          RABBITMQ_USER: ${{ vars.RABBITMQ_USER }}
+          RABBITMQ_VHOST: ${{ vars.RABBITMQ_VHOST }}
+          DEBUG: ${{ vars.DEBUG }}
+          GUNICORN_WORKERS: ${{ vars.GUNICORN_WORKERS }}
+          FILE_SIZE_LIMIT: ${{ vars.FILE_SIZE_LIMIT }}
+          API_KEY_RATE_LIMIT: ${{ vars.API_KEY_RATE_LIMIT }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          LIVE_SERVER_SECRET_KEY: ${{ secrets.LIVE_SERVER_SECRET_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: docker compose up -d
 
       - name: Wait for migrator to complete
