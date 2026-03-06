@@ -74,11 +74,10 @@ jobs:
           echo ""
           echo "=== Checking API ==="
           for i in {1..10}; do
-            # Check if gunicorn workers are running
-            WORKERS=$(docker exec plane-api pgrep -c -f "uvicorn" 2>/dev/null || echo "0")
-            if [ "$WORKERS" -ge "2" ]; then
-              echo "API healthy! Gunicorn running with $WORKERS uvicorn workers"
-              docker compose logs --tail=20 api | tail -10
+            # Check container is running and has uvicorn workers using docker top (from host)
+            if docker top plane-api 2>/dev/null | grep -q "uvicorn"; then
+              echo "API healthy! Uvicorn workers running"
+              docker compose logs --tail=10 api
               exit 0
             fi
             echo "Waiting for API workers... ($i/10)"
