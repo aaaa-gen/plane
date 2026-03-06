@@ -73,14 +73,20 @@ jobs:
           docker compose ps
           echo ""
           echo "=== Checking API ==="
-          for i in {1..15}; do
-            if docker exec plane-api curl -sf http://localhost:8000/api/v1/ > /dev/null 2>&1; then
-              echo "API is healthy!"
-              exit 0
+          for i in {1..20}; do
+            # Check if gunicorn workers are running
+            if docker exec plane-api pgrep -f "gunicorn" > /dev/null 2>&1; then
+              echo "Gunicorn is running, testing endpoint..."
+              RESPONSE=$(docker exec plane-api curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/users/me/ 2>/dev/null || echo "000")
+              if [ "$RESPONSE" = "401" ] || [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "403" ]; then
+                echo "API is responding (HTTP $RESPONSE) - healthy!"
+                exit 0
+              fi
+              echo "API response: $RESPONSE (waiting...)"
             fi
-            echo "Waiting for API... ($i/15)"
-            sleep 10
+            echo "Waiting for API... ($i/20)"
+            sleep 5
           done
           echo "API health check timeout - showing logs"
-          docker compose logs --tail=100 api migrator
+          docker compose logs --tail=100 api
           exit 1
