@@ -24,43 +24,7 @@ jobs:
           cp docker-compose.yml ${{ env.DEPLOY_PATH }}/
           cp plane.env.example ${{ env.DEPLOY_PATH }}/
 
-      - name: Ensure shared Traefik network exists
-        run: |
-          if ! docker network inspect traefik >/dev/null 2>&1; then
-            docker network create traefik
-          fi
-
-      - name: Validate gateway Traefik is running
-        run: |
-          if ! docker ps --filter "name=^traefik$" --format "{{.Names}}" | grep -x traefik >/dev/null 2>&1; then
-            echo "Shared Traefik gateway is not running on prod." >&2
-            echo "Deploy the gateway repository first, then re-run this workflow." >&2
-            exit 1
-          fi
-
-      - name: Pull images
-        working-directory: ${{ env.DEPLOY_PATH }}
-        env:
-          APP_RELEASE: ${{ vars.APP_RELEASE }}
-        run: docker compose pull
-
-      - name: Stop existing containers
-        working-directory: ${{ env.DEPLOY_PATH }}
-        run: docker compose down --remove-orphans 2>/dev/null || true
-
-      - name: Debug env vars
-        env:
-          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
-          APP_RELEASE: ${{ vars.APP_RELEASE }}
-          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-        run: |
-          echo "APP_DOMAIN=$APP_DOMAIN"
-          echo "APP_RELEASE=$APP_RELEASE"
-          echo "POSTGRES_USER=$POSTGRES_USER"
-          echo "---"
-          env | grep -E "APP_|POSTGRES_" || echo "No matching vars found"
-
-      - name: Deploy
+      - name: Generate runtime env file
         working-directory: ${{ env.DEPLOY_PATH }}
         env:
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
@@ -79,7 +43,84 @@ jobs:
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: docker compose up -d
+        run: |
+          cat > .env <<EOF
+          APP_DOMAIN=${APP_DOMAIN}
+          APP_RELEASE=${APP_RELEASE}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          POSTGRES_DB=${POSTGRES_DB}
+          RABBITMQ_USER=${RABBITMQ_USER}
+          RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+          RABBITMQ_VHOST=${RABBITMQ_VHOST}
+          AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+          AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+          SECRET_KEY=${SECRET_KEY}
+          LIVE_SERVER_SECRET_KEY=${LIVE_SERVER_SECRET_KEY}
+          DEBUG=${DEBUG}
+          GUNICORN_WORKERS=${GUNICORN_WORKERS}
+          FILE_SIZE_LIMIT=${FILE_SIZE_LIMIT}
+          API_KEY_RATE_LIMIT=${API_KEY_RATE_LIMIT}
+          EOF
+
+      - name: Validate required deploy variables
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          required_vars=(
+            APP_DOMAIN APP_RELEASE POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB
+            RABBITMQ_USER RABBITMQ_PASSWORD RABBITMQ_VHOST
+            AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+            SECRET_KEY LIVE_SERVER_SECRET_KEY
+          )
+
+          for var in "${required_vars[@]}"; do
+            if ! grep -q "^${var}=" .env; then
+              echo "Missing required variable in .env: ${var}" >&2
+              exit 1
+            fi
+
+            value="$(grep "^${var}=" .env | head -n1 | cut -d'=' -f2-)"
+            if [ -z "${value}" ]; then
+              echo "Required variable is empty: ${var}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Ensure shared Traefik network exists
+        run: |
+          if ! docker network inspect traefik >/dev/null 2>&1; then
+            docker network create traefik
+          fi
+
+      - name: Validate gateway Traefik is running
+        run: |
+          if ! docker ps --filter "name=^traefik$" --format "{{.Names}}" | grep -x traefik >/dev/null 2>&1; then
+            echo "Shared Traefik gateway is not running on prod." >&2
+            echo "Deploy the gateway repository first, then re-run this workflow." >&2
+            exit 1
+          fi
+
+      - name: Pull images
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: docker compose --env-file .env pull
+
+      - name: Stop existing containers
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: docker compose --env-file .env down --remove-orphans 2>/dev/null || true
+
+      - name: Debug env vars
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          echo "APP_DOMAIN=$(grep '^APP_DOMAIN=' .env | cut -d'=' -f2-)"
+          echo "APP_RELEASE=$(grep '^APP_RELEASE=' .env | cut -d'=' -f2-)"
+          echo "POSTGRES_USER=$(grep '^POSTGRES_USER=' .env | cut -d'=' -f2-)"
+          echo "---"
+          echo "Runtime .env loaded"
+
+      - name: Deploy
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: docker compose --env-file .env up -d
 
       - name: Wait for migrator to complete
         working-directory: ${{ env.DEPLOY_PATH }}
@@ -108,19 +149,24 @@ jobs:
         working-directory: ${{ env.DEPLOY_PATH }}
         run: |
           echo "=== Container Status ==="
-          docker compose ps
+          docker compose --env-file .env ps
           echo ""
           echo "=== Checking API ==="
           for i in {1..10}; do
             # Check container is running and has uvicorn workers using docker top (from host)
             if docker top plane-api 2>/dev/null | grep -q "uvicorn"; then
               echo "API healthy! Uvicorn workers running"
-              docker compose logs --tail=10 api
+              docker compose --env-file .env logs --tail=10 api
               exit 0
             fi
             echo "Waiting for API workers... ($i/10)"
             sleep 5
           done
           echo "API health check timeout - showing logs"
-          docker compose logs --tail=100 api
+          docker compose --env-file .env logs --tail=100 api
           exit 1
+
+      - name: Cleanup runtime env file
+        if: always()
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: rm -f .env
