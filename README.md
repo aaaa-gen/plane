@@ -1,29 +1,30 @@
 # Plane.so Docker Deployment
 
-Gestión de proyectos open source con Traefik reverse proxy.
+Gestión de proyectos open source usando el Traefik compartido del proyecto gateway.
 
 ## Requisitos
 
 - Docker y Docker Compose
-- Traefik gateway corriendo (red `traefik`)
+- Gateway desplegado y corriendo en el runner (publica Traefik y la red `traefik`)
 - Certificados SSL configurados con Cloudflare
 
 ## Instalación
 
 ```bash
-# 1. Crear red traefik si no existe
-docker network create traefik
-
-# 2. Copiar y configurar variables
+# 1. Copiar y configurar variables
 cp plane.env.example plane.env
 nano plane.env  # Editar valores
 
-# 3. Iniciar
+# 2. Iniciar
 docker compose up -d
 
-# 4. Ver logs
+# 3. Ver logs
 docker compose logs -f
 ```
+
+## Dependencia de Infraestructura
+
+El deploy de Plane en producción valida que el contenedor `traefik` del proyecto gateway esté activo. Si no lo está, el workflow falla para evitar un despliegue sin enrutamiento público.
 
 ## Configuración Requerida
 
