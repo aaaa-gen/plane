@@ -62,13 +62,10 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik"
       # Main router - catch all for frontend
-      - "traefik.http.routers.plane-web.rule=Host(`${APP_DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/god-mode`) && !PathPrefix(`/spaces`) && !PathPrefix(`/live`)"
+      - "traefik.http.routers.plane-web.rule=Host(`${APP_DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/auth`) && !PathPrefix(`/god-mode`) && !PathPrefix(`/spaces`) && !PathPrefix(`/live`)"
       - "traefik.http.routers.plane-web.entrypoints=websecure"
       - "traefik.http.routers.plane-web.tls=true"
       - "traefik.http.routers.plane-web.tls.certresolver=cloudflare"
-      - "traefik.http.routers.plane-web.middlewares=plane-headers"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Host=${APP_DOMAIN}"
       - "traefik.http.services.plane-web.loadbalancer.server.port=3000"
 
   space:
@@ -79,7 +76,7 @@ services:
       - api
       - web
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/spaces/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -94,9 +91,6 @@ services:
       - "traefik.http.routers.plane-space.entrypoints=websecure"
       - "traefik.http.routers.plane-space.tls=true"
       - "traefik.http.routers.plane-space.tls.certresolver=cloudflare"
-      - "traefik.http.routers.plane-space.middlewares=plane-headers"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Host=${APP_DOMAIN}"
       - "traefik.http.services.plane-space.loadbalancer.server.port=3000"
 
   admin:
@@ -116,13 +110,10 @@ services:
       - "traefik.http.routers.plane-admin.entrypoints=websecure"
       - "traefik.http.routers.plane-admin.tls=true"
       - "traefik.http.routers.plane-admin.tls.certresolver=cloudflare"
-      - "traefik.http.routers.plane-admin.middlewares=plane-admin-slash,plane-headers"
+      - "traefik.http.routers.plane-admin.middlewares=plane-admin-slash"
       - "traefik.http.middlewares.plane-admin-slash.redirectregex.regex=^https://([^/]+)/god-mode$"
       - "traefik.http.middlewares.plane-admin-slash.redirectregex.replacement=https://$${1}/god-mode/"
       - "traefik.http.middlewares.plane-admin-slash.redirectregex.permanent=true"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Host=${APP_DOMAIN}"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Script-Name=/god-mode"
       - "traefik.http.services.plane-admin.loadbalancer.server.port=3000"
 
   live:
@@ -148,9 +139,6 @@ services:
       - "traefik.http.routers.plane-live.entrypoints=websecure"
       - "traefik.http.routers.plane-live.tls=true"
       - "traefik.http.routers.plane-live.tls.certresolver=cloudflare"
-      - "traefik.http.routers.plane-live.middlewares=plane-headers"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Host=${APP_DOMAIN}"
       - "traefik.http.services.plane-live.loadbalancer.server.port=3000"
 
   # ============================================
@@ -179,9 +167,11 @@ services:
       - "traefik.http.routers.plane-api.entrypoints=websecure"
       - "traefik.http.routers.plane-api.tls=true"
       - "traefik.http.routers.plane-api.tls.certresolver=cloudflare"
-      - "traefik.http.routers.plane-api.middlewares=plane-headers"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.plane-headers.headers.customrequestheaders.X-Forwarded-Host=${APP_DOMAIN}"
+      - "traefik.http.routers.plane-auth.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/auth`)"
+      - "traefik.http.routers.plane-auth.entrypoints=websecure"
+      - "traefik.http.routers.plane-auth.tls=true"
+      - "traefik.http.routers.plane-auth.tls.certresolver=cloudflare"
+      - "traefik.http.routers.plane-auth.service=plane-api"
       - "traefik.http.services.plane-api.loadbalancer.server.port=8000"
 
   worker:
