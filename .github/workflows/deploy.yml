@@ -166,7 +166,9 @@ jobs:
           docker compose --env-file .env logs --tail=100 api
           exit 1
 
-      - name: Cleanup runtime env file
-        if: always()
-        working-directory: ${{ env.DEPLOY_PATH }}
-        run: rm -f .env
+      # NOTE: Keep .env file for container runtime - DO NOT DELETE
+      # The containers need the .env file to load environment variables during docker compose up
+      # - name: Cleanup runtime env file
+      #   if: always()
+      #   working-directory: ${{ env.DEPLOY_PATH }}
+      #   run: rm -f .env
