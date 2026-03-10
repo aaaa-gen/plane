@@ -105,6 +105,10 @@ services:
       - "traefik.http.routers.plane-admin.entrypoints=websecure"
       - "traefik.http.routers.plane-admin.tls=true"
       - "traefik.http.routers.plane-admin.tls.certresolver=cloudflare"
+      - "traefik.http.routers.plane-admin.middlewares=plane-admin-slash"
+      - "traefik.http.middlewares.plane-admin-slash.redirectregex.regex=^https://([^/]+)/god-mode$"
+      - "traefik.http.middlewares.plane-admin-slash.redirectregex.replacement=https://$${1}/god-mode/"
+      - "traefik.http.middlewares.plane-admin-slash.redirectregex.permanent=true"
       - "traefik.http.services.plane-admin.loadbalancer.server.port=3000"
 
   live:
