@@ -67,7 +67,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik"
       # Main router - catch all for frontend
-      - "traefik.http.routers.plane-web.rule=Host(`${APP_DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/auth`) && !PathPrefix(`/god-mode`) && !PathPrefix(`/spaces`) && !PathPrefix(`/live`)"
+      - "traefik.http.routers.plane-web.rule=Host(`${APP_DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/auth`) && !PathPrefix(`/uploads`) && !PathPrefix(`/god-mode`) && !PathPrefix(`/spaces`) && !PathPrefix(`/live`)"
       - "traefik.http.routers.plane-web.entrypoints=websecure"
       - "traefik.http.routers.plane-web.tls=true"
       - "traefik.http.routers.plane-web.tls.certresolver=cloudflare"
@@ -177,6 +177,11 @@ services:
       - "traefik.http.routers.plane-auth.tls=true"
       - "traefik.http.routers.plane-auth.tls.certresolver=cloudflare"
       - "traefik.http.routers.plane-auth.service=plane-api"
+      - "traefik.http.routers.plane-uploads.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/uploads`)"
+      - "traefik.http.routers.plane-uploads.entrypoints=websecure"
+      - "traefik.http.routers.plane-uploads.tls=true"
+      - "traefik.http.routers.plane-uploads.tls.certresolver=cloudflare"
+      - "traefik.http.routers.plane-uploads.service=plane-api"
       - "traefik.http.services.plane-api.loadbalancer.server.port=8000"
 
   worker:
