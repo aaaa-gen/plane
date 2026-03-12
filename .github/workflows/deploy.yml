@@ -136,36 +136,34 @@ jobs:
       - name: Sync Google OAuth configuration from env
         working-directory: ${{ env.DEPLOY_PATH }}
         run: |
-          docker exec plane-api sh -lc '
-            python manage.py shell -c "
-from plane.license.models import InstanceConfiguration
-from plane.license.utils.encryption import encrypt_data
-import os
+          docker exec plane-api sh -lc "python manage.py shell <<'PY'
+    from plane.license.models import InstanceConfiguration
+    from plane.license.utils.encryption import encrypt_data
+    import os
 
-google_client_id = os.environ.get(\"GOOGLE_CLIENT_ID\", \"\")
-google_client_secret = os.environ.get(\"GOOGLE_CLIENT_SECRET\", \"\")
-is_google_enabled = \"1\" if google_client_id and google_client_secret else \"0\"
+    google_client_id = os.environ.get('GOOGLE_CLIENT_ID', '')
+    google_client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+    is_google_enabled = '1' if google_client_id and google_client_secret else '0'
 
-items = [
-    (\"GOOGLE_CLIENT_ID\", google_client_id, \"GOOGLE\", False),
-    (\"GOOGLE_CLIENT_SECRET\", google_client_secret, \"GOOGLE\", True),
-    (\"IS_GOOGLE_ENABLED\", is_google_enabled, \"AUTHENTICATION\", False),
-]
+    items = [
+      ('GOOGLE_CLIENT_ID', google_client_id, 'GOOGLE', False),
+      ('GOOGLE_CLIENT_SECRET', google_client_secret, 'GOOGLE', True),
+      ('IS_GOOGLE_ENABLED', is_google_enabled, 'AUTHENTICATION', False),
+    ]
 
-for key, value, category, encrypted in items:
-    obj, _ = InstanceConfiguration.objects.get_or_create(
+    for key, value, category, encrypted in items:
+      obj, _ = InstanceConfiguration.objects.get_or_create(
         key=key,
-        defaults={\"category\": category, \"is_encrypted\": encrypted},
-    )
-    obj.category = category
-    obj.is_encrypted = encrypted
-    obj.value = encrypt_data(value) if encrypted else value
-    obj.save()
+        defaults={'category': category, 'is_encrypted': encrypted},
+      )
+      obj.category = category
+      obj.is_encrypted = encrypted
+      obj.value = encrypt_data(value) if encrypted else value
+      obj.save()
 
-print(\"Google OAuth configuration synchronized\")
-"
-            python manage.py clear_cache
-          '
+    print('Google OAuth configuration synchronized')
+    PY
+    python manage.py clear_cache"
 
       - name: Wait for migrator to complete
         working-directory: ${{ env.DEPLOY_PATH }}
