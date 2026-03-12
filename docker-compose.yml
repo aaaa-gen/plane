@@ -38,6 +38,11 @@ x-app-env: &app-env
   # Proxy
   APP_DOMAIN: ${APP_DOMAIN}
   FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT}
+  # Google OAuth
+  IS_GOOGLE_ENABLED: ${IS_GOOGLE_ENABLED:-0}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  ENABLE_GOOGLE_SYNC: ${ENABLE_GOOGLE_SYNC:-0}
 
 services:
   # ============================================

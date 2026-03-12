@@ -37,12 +37,16 @@ jobs:
           GUNICORN_WORKERS: ${{ vars.GUNICORN_WORKERS }}
           FILE_SIZE_LIMIT: ${{ vars.FILE_SIZE_LIMIT }}
           API_KEY_RATE_LIMIT: ${{ vars.API_KEY_RATE_LIMIT }}
+          ENABLE_GOOGLE_SYNC: ${{ vars.ENABLE_GOOGLE_SYNC }}
+          IS_GOOGLE_ENABLED: ${{ secrets.GOOGLE_CLIENT_ID != '' && secrets.GOOGLE_CLIENT_SECRET != '' && '1' || '0' }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           LIVE_SERVER_SECRET_KEY: ${{ secrets.LIVE_SERVER_SECRET_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           cat > .env <<EOF
           APP_DOMAIN=${APP_DOMAIN}
@@ -61,6 +65,10 @@ jobs:
           GUNICORN_WORKERS=${GUNICORN_WORKERS}
           FILE_SIZE_LIMIT=${FILE_SIZE_LIMIT}
           API_KEY_RATE_LIMIT=${API_KEY_RATE_LIMIT}
+          IS_GOOGLE_ENABLED=${IS_GOOGLE_ENABLED}
+          GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+          GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+          ENABLE_GOOGLE_SYNC=${ENABLE_GOOGLE_SYNC:-0}
           EOF
 
       - name: Validate required deploy variables
@@ -115,6 +123,9 @@ jobs:
           echo "APP_DOMAIN=$(grep '^APP_DOMAIN=' .env | cut -d'=' -f2-)"
           echo "APP_RELEASE=$(grep '^APP_RELEASE=' .env | cut -d'=' -f2-)"
           echo "POSTGRES_USER=$(grep '^POSTGRES_USER=' .env | cut -d'=' -f2-)"
+          echo "IS_GOOGLE_ENABLED=$(grep '^IS_GOOGLE_ENABLED=' .env | cut -d'=' -f2-)"
+          echo "GOOGLE_CLIENT_ID set=$([ -n "$(grep '^GOOGLE_CLIENT_ID=' .env | cut -d'=' -f2-)" ] && echo yes || echo no)"
+          echo "GOOGLE_CLIENT_SECRET set=$([ -n "$(grep '^GOOGLE_CLIENT_SECRET=' .env | cut -d'=' -f2-)" ] && echo yes || echo no)"
           echo "---"
           echo "Runtime .env loaded"
 

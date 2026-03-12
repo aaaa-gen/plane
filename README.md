@@ -38,7 +38,32 @@ POSTGRES_PASSWORD=contraseña-segura
 RABBITMQ_PASSWORD=contraseña-segura
 AWS_ACCESS_KEY_ID=minio-access-key
 AWS_SECRET_ACCESS_KEY=minio-secret-key
+GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=tu-client-secret
+IS_GOOGLE_ENABLED=1
 ```
+
+## Google OAuth
+
+Plane soporta Google OAuth por variables de entorno. En este repo el deploy ya propaga `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` desde GitHub Actions al contenedor backend, y activa `IS_GOOGLE_ENABLED=1` automáticamente cuando ambos valores existen.
+
+1. En Google Cloud Console crea un OAuth Client ID de tipo **Web application**.
+2. Configura estos valores en el cliente OAuth:
+	- **Authorized JavaScript origin:** `https://APP_DOMAIN`
+	- **Authorized redirect URI:** `https://APP_DOMAIN/auth/google/callback/`
+	- **Authorized redirect URI (mobile):** `https://APP_DOMAIN/auth/mobile/google/callback/`
+3. Guarda estas credenciales en GitHub como secrets:
+	- **Repository Secret:** `GOOGLE_CLIENT_ID`
+	- **Repository Secret:** `GOOGLE_CLIENT_SECRET`
+4. Ejecuta el workflow de deploy o vuelve a desplegar `main`.
+5. Verifica en `https://APP_DOMAIN/` que aparezca la opción `Sign in with Google`.
+6. Si ya tenías Plane desplegado y no aparece, entra a `https://APP_DOMAIN/god-mode` → **Authentication** → **Google** y confirma que esté habilitado.
+
+Notas:
+- Para que OAuth funcione, `APP_DOMAIN` debe resolver públicamente por HTTPS.
+- Este stack ya enruta `/auth` al backend API, por lo que no hace falta cambiar Traefik para Google OAuth.
+- Plane espera el callback web con barra final: `https://APP_DOMAIN/auth/google/callback/`.
+- En este repo puedes guardar ambos (`GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`) como GitHub Secrets.
 
 ## Servicios
 
