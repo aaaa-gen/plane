@@ -30,11 +30,12 @@ x-app-env: &app-env
   REDIS_PORT: 6379
   REDIS_URL: redis://plane-redis:6379/
   # S3/MinIO
-  AWS_REGION: ""
+  AWS_REGION: ${AWS_REGION}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   AWS_S3_ENDPOINT_URL: http://plane-minio:9000
-  AWS_S3_BUCKET_NAME: uploads
+  AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
+  BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
   # Proxy
   APP_DOMAIN: ${APP_DOMAIN}
   FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT}
@@ -177,11 +178,6 @@ services:
       - "traefik.http.routers.plane-auth.tls=true"
       - "traefik.http.routers.plane-auth.tls.certresolver=cloudflare"
       - "traefik.http.routers.plane-auth.service=plane-api"
-      - "traefik.http.routers.plane-uploads.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/uploads`)"
-      - "traefik.http.routers.plane-uploads.entrypoints=websecure"
-      - "traefik.http.routers.plane-uploads.tls=true"
-      - "traefik.http.routers.plane-uploads.tls.certresolver=cloudflare"
-      - "traefik.http.routers.plane-uploads.service=plane-api"
       - "traefik.http.services.plane-api.loadbalancer.server.port=8000"
 
   worker:
@@ -284,7 +280,16 @@ services:
     volumes:
       - minio_data:/data
     networks:
+      - traefik
       - plane-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.plane-uploads.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/uploads`)"
+      - "traefik.http.routers.plane-uploads.entrypoints=websecure"
+      - "traefik.http.routers.plane-uploads.tls=true"
+      - "traefik.http.routers.plane-uploads.tls.certresolver=cloudflare"
+      - "traefik.http.services.plane-uploads.loadbalancer.server.port=9000"
 
   # Create MinIO bucket on startup
   minio-setup:
@@ -296,8 +301,8 @@ services:
       /bin/sh -c "
       sleep 5;
       mc alias set myminio http://plane-minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
-      mc mb myminio/uploads --ignore-existing;
-      mc anonymous set download myminio/uploads;
+      mc mb myminio/${AWS_S3_BUCKET_NAME} --ignore-existing;
+      mc anonymous set download myminio/${AWS_S3_BUCKET_NAME};
       exit 0;
       "
     networks:
