@@ -36,12 +36,26 @@ SECRET_KEY=<openssl rand -hex 32>
 LIVE_SERVER_SECRET_KEY=<openssl rand -hex 32>
 POSTGRES_PASSWORD=contraseña-segura
 RABBITMQ_PASSWORD=contraseña-segura
+AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=minio-access-key
 AWS_SECRET_ACCESS_KEY=minio-secret-key
+AWS_S3_BUCKET_NAME=uploads
 GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=tu-client-secret
 IS_GOOGLE_ENABLED=1
 ```
+
+## Storage y uploads
+
+Plane genera URLs firmadas para subir archivos directamente al bucket S3/MinIO. Cuando `USE_MINIO=1`, el host público de la app debe enrutar `/uploads` hacia MinIO.
+
+En este repo eso queda resuelto así:
+
+- `plane-api` maneja `/api` y `/auth`
+- `plane-minio` maneja `/uploads`
+- el bucket usado por Plane es `AWS_S3_BUCKET_NAME` y por defecto queda en `uploads`
+
+Si `/uploads` apunta al backend en lugar de MinIO, la subida de imágenes de proyecto, avatares y adjuntos puede fallar aunque el bucket exista.
 
 ## Google OAuth
 
@@ -85,6 +99,7 @@ Notas:
 - **App:** `https://APP_DOMAIN/`
 - **Admin:** `https://APP_DOMAIN/god-mode`
 - **API:** `https://APP_DOMAIN/api`
+- **Uploads S3 proxy:** `https://APP_DOMAIN/uploads/...`
 
 ## Comandos
 
